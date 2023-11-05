@@ -1,5 +1,6 @@
-#include "math.h"
+#include "geometry/math.h"
 #include "geometry.h"
+#include "SDL2/SDL.h"
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -8,19 +9,14 @@
 // Die Datenstrukturen und Funktionen die weiter hinten im Text beschrieben sind,
 // hängen höchstens von den vorhergehenden Datenstrukturen ab, aber nicht umgekehrt.
 
-
-
 // Ein "Bildschirm", der das Setzen eines Pixels kapselt
 // Der Bildschirm hat eine Auflösung (Breite x Höhe)
 // Kann zur Ausgabe einer PPM-Datei verwendet werden oder
 // mit SDL2 implementiert werden.
 
-
-
 // Eine "Kamera", die von einem Augenpunkt aus in eine Richtung senkrecht auf ein Rechteck (das Bild) zeigt.
 // Für das Rechteck muss die Auflösung oder alternativ die Pixelbreite und -höhe bekannt sein.
 // Für ein Pixel mit Bildkoordinate kann ein Sehstrahl erzeugt werden.
-
 
 
 // Für die "Farbe" benötigt man nicht unbedingt eine eigene Datenstruktur.
@@ -30,7 +26,6 @@
 
 
 // Das "Material" der Objektoberfläche mit ambienten, diffusem und reflektiven Farbanteil.
-
 
 
 // Ein "Objekt", z.B. eine Kugel oder ein Dreieck, und dem zugehörigen Material der Oberfläche.
@@ -65,16 +60,46 @@
 // Die rekursive raytracing-Methode. Am besten ab einer bestimmten Rekursionstiefe (z.B. als Parameter übergeben) abbrechen.
 
 
-int main(void) {
-  // Bildschirm erstellen
-  // Kamera erstellen
-  // Für jede Pixelkoordinate x,y
-  //   Sehstrahl für x,y mit Kamera erzeugen
-  //   Farbe mit raytracing-Methode bestimmen
-  //   Beim Bildschirm die Farbe für Pixel x,y, setzten
+int main() {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        std::cout << "SDL_Init() failed: %s\n" << SDL_GetError();
+        return 1;
+    }
 
-  std::cout << "Hello World" << "\n";
+    SDL_Window *window = nullptr;
+    window = SDL_CreateWindow("AHHHHH",
+                              SDL_WINDOWPOS_CENTERED,
+                              SDL_WINDOWPOS_CENTERED,
+                              640,
+                              400,
+                              SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
+    SDL_ShowWindow(window);
 
-  return 0;   
+    bool quit = false;
+    while (!quit) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                quit = true;
+            }
+            if (e.type == SDL_KEYDOWN) {
+                quit = true;
+            }
+            if (e.type == SDL_MOUSEBUTTONDOWN) {
+                quit = true;
+            }
+        }
+    }
+
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return 0;
+
+    // Kamera erstellen
+
+    // Für jede Pixelkoordinate x,y
+    //   Sehstrahl für x,y mit Kamera erzeugen
+    //   voidFarbe mit raytracing-Methode bestimmen
+    //   Beim Bildschirm die Farbe für Pixel x,y, setzten
 }
 
