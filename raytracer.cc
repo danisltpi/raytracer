@@ -1,18 +1,9 @@
-#include "geometry/math.h"
-#include "geometry.h"
-#include "SDL2/SDL.h"
-#include <iostream>
-#include <vector>
-#include <algorithm>
+#include "geometry/geometry.h"
+#include "sdltemplate.h"
 
 // Die folgenden Kommentare beschreiben Datenstrukturen und Funktionen
 // Die Datenstrukturen und Funktionen die weiter hinten im Text beschrieben sind,
 // hängen höchstens von den vorhergehenden Datenstrukturen ab, aber nicht umgekehrt.
-
-// Ein "Bildschirm", der das Setzen eines Pixels kapselt
-// Der Bildschirm hat eine Auflösung (Breite x Höhe)
-// Kann zur Ausgabe einer PPM-Datei verwendet werden oder
-// mit SDL2 implementiert werden.
 
 // Eine "Kamera", die von einem Augenpunkt aus in eine Richtung senkrecht auf ein Rechteck (das Bild) zeigt.
 // Für das Rechteck muss die Auflösung oder alternativ die Pixelbreite und -höhe bekannt sein.
@@ -61,38 +52,28 @@
 
 
 int main() {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cout << "SDL_Init() failed: %s\n" << SDL_GetError();
-        return 1;
-    }
 
-    SDL_Window *window = nullptr;
-    window = SDL_CreateWindow("AHHHHH",
-                              SDL_WINDOWPOS_CENTERED,
-                              SDL_WINDOWPOS_CENTERED,
-                              640,
-                              400,
-                              SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
-    SDL_ShowWindow(window);
-
-    bool quit = false;
-    while (!quit) {
-        SDL_Event e;
-        while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                quit = true;
-            }
-            if (e.type == SDL_KEYDOWN) {
-                quit = true;
-            }
-            if (e.type == SDL_MOUSEBUTTONDOWN) {
-                quit = true;
-            }
+    // Ein "Bildschirm", der das Setzen eines Pixels kapselt
+    // Der Bildschirm hat eine Auflösung (Breite x Höhe)
+    // Kann zur Ausgabe einer PPM-Datei verwendet werden oder
+    // mit SDL2 implementiert werden.
+    int width = 800;
+    int height = 400;
+    sdltemplate::sdl("Ray Tracer", width, height);
+    sdltemplate::loop();
+    for (int y = height - 1; y >= 0; y--) {
+        for (int x = 0; x < width; x++) {
+            Vector3df color{float(x) / float(width), float(y) / float(height), 0.2};
+            int ir = int(255.999 * color[0]);
+            int ig = int(255.999 * color[1]);
+            int ib = int(255.999 * color[2]);
+            sdltemplate::setDrawColor(sdltemplate::createColor(ir, ig, ib, 255));
+            sdltemplate::drawPoint(x, y);
         }
     }
-
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    while (sdltemplate::running) {
+        sdltemplate::loop();
+    }
     return 0;
 
     // Kamera erstellen

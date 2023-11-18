@@ -15,11 +15,6 @@ add_subdirectory(geometry)
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
-add_executable(raytracer raytracer.cc
-        window.h)
+add_executable(raytracer raytracer.cc)
 target_include_directories(raytracer PUBLIC geometry)
-target_link_libraries(raytracer ${SDL2_LIBRARIES})
-add_executable(playground playground.cpp
-        vec3.h
-        color.h
-        ray.h)
+target_link_libraries(raytracer ${SDL2_LIBRARIES} geometry_lib)
