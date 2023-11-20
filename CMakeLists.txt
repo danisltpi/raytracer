@@ -15,6 +15,8 @@ add_subdirectory(geometry)
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
-add_executable(raytracer raytracer.cc)
+add_executable(raytracer raytracer.cc
+        hittable.h
+)
 target_include_directories(raytracer PUBLIC geometry)
 target_link_libraries(raytracer ${SDL2_LIBRARIES} geometry_lib)

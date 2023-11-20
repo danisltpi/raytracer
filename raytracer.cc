@@ -13,10 +13,14 @@
 // Für die "Farbe" benötigt man nicht unbedingt eine eigene Datenstruktur.
 // Sie kann als Vector3df implementiert werden mit Farbanteil von 0 bis 1.
 // Vor Setzen eines Pixels auf eine bestimmte Farbe (z.B. 8-Bit-Farbtiefe),
-// kann der Farbanteil mit 255 multipliziert  und der Nachkommaanteil verworfen werden.
+// kann der Farbanteil mit 255 multipliziert// kann der Farbanteil mit 255 multipliziert  und der Nachkommaanteil verworfen werden.  und der Nachkommaanteil verworfen werden.
+using Color = Vector3df;
 
 
 // Das "Material" der Objektoberfläche mit ambienten, diffusem und reflektiven Farbanteil.
+class Material {
+
+};
 
 
 // Ein "Objekt", z.B. eine Kugel oder ein Dreieck, und dem zugehörigen Material der Oberfläche.
@@ -49,24 +53,65 @@
 // Am besten einen Zeiger auf das Objekt zurückgeben. Wenn dieser nullptr ist, dann gibt es kein sichtbares Objekt.
 
 // Die rekursive raytracing-Methode. Am besten ab einer bestimmten Rekursionstiefe (z.B. als Parameter übergeben) abbrechen.
+Sphere3df sphere1 = Sphere3df{Vector3df{0.0f, 0.0f, -1.0f}, 0.5f};
+
+float hit_sphere(const Sphere3df &sphere, const Ray3df &ray) {
+    return sphere.intersects(ray);
+}
+
+
+Vector3df ray_color(const Ray3df &ray) {
+    float t = hit_sphere(sphere1, ray);
+    if (t > 0.0) {
+        Vector3df normal = (ray.origin + t * ray.direction) - Vector3df{0, 0, -1};
+        normal.normalize();
+        return 0.5f * Color{normal[0] + 1, normal[1] + 1, normal[2] + 1};
+    }
+    Vector3df dir = ray.direction;
+    dir.normalize();
+    t = 0.5f * (dir[1] + 1.0f);
+    return (1.0f - t) * Color{1.0, 1.0, 1.0} + t * Color{0.5, 0.7, 1.0};
+}
 
 
 int main() {
-
     // Ein "Bildschirm", der das Setzen eines Pixels kapselt
     // Der Bildschirm hat eine Auflösung (Breite x Höhe)
     // Kann zur Ausgabe einer PPM-Datei verwendet werden oder
     // mit SDL2 implementiert werden.
+    float aspect_ratio = 16.0f / 9.0f;
     int width = 800;
-    int height = 400;
+    int height = static_cast<int>(static_cast<float>(width) / aspect_ratio);
+    height = (height < 1) ? 1 : height;
+
+    // Camera
+    float focal_length = 1.0f;
+    float viewport_height = 2.0f;
+    float viewport_width = viewport_height *
+                           (static_cast<float>(width) / static_cast<float>(height));
+    Vector3df camera_center = Vector3df{0.0, 0.0, 0.0};
+
+    // Calculate vectors across horizontal and vertical viewport
+    Vector3df viewport_x = Vector3df{viewport_width, 0.0, 0.0};
+    Vector3df viewport_y = Vector3df{0.0, -viewport_height, 0.0};
+    Vector3df viewport_upper_left = camera_center - Vector3df{0.0, 0.0, focal_length}
+                                    - (viewport_x / 2) - (viewport_y / 2.0f);
+
+    Vector3df upper_left_corner{2.0, -1.0, -1.0};
+    Vector3df horizontal{4.0, 0.0, 0.0};
+    Vector3df vertical{0.0, 2.0, 0.0};
+    Vector3df origin{0.0, 0.0, 0.0};
     sdltemplate::sdl("Ray Tracer", width, height);
     sdltemplate::loop();
-    for (int y = height - 1; y >= 0; y--) {
+    for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            Vector3df color{float(x) / float(width), float(y) / float(height), 0.2};
-            int ir = int(255.999 * color[0]);
-            int ig = int(255.999 * color[1]);
-            int ib = int(255.999 * color[2]);
+            float u = float(x) / float(width);
+            float v = float(y) / float(height);
+            Ray3df r{origin, upper_left_corner + u * horizontal + v * vertical};
+            Vector3df col = ray_color(r);
+            int ir = int(255.999 * col[0]);
+            int ig = int(255.999 * col[1]);
+            int ib = int(255.999 * col[2]);
             sdltemplate::setDrawColor(sdltemplate::createColor(ir, ig, ib, 255));
             sdltemplate::drawPoint(x, y);
         }
