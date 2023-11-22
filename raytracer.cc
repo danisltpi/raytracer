@@ -89,13 +89,19 @@ int main() {
     float viewport_height = 2.0f;
     float viewport_width = viewport_height *
                            (static_cast<float>(width) / static_cast<float>(height));
-    Vector3df camera_center = Vector3df{0.0, 0.0, 0.0};
-
+    auto camera_center = Vector3df{0.0, 0.0, 0.0};
     // Calculate vectors across horizontal and vertical viewport
     Vector3df viewport_x = Vector3df{viewport_width, 0.0, 0.0};
     Vector3df viewport_y = Vector3df{0.0, -viewport_height, 0.0};
+
+    Vector3df pixel_delta_x = viewport_x * (1.0f / width);
+    Vector3df pixel_delta_y = viewport_y * (1.0f / height);
+
     Vector3df viewport_upper_left = camera_center - Vector3df{0.0, 0.0, focal_length}
-                                    - (viewport_x / 2) - (viewport_y / 2.0f);
+                                    - (viewport_x * 0.5f)
+                                    - (viewport_y * 0.5f);
+    // center of the upper left pixel
+    Vector3df pixel00_loc = viewport_upper_left + 0.5f * (pixel_delta_x + pixel_delta_y);
 
     Vector3df upper_left_corner{2.0, -1.0, -1.0};
     Vector3df horizontal{4.0, 0.0, 0.0};
@@ -105,9 +111,12 @@ int main() {
     sdltemplate::loop();
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            float u = float(x) / float(width);
-            float v = float(y) / float(height);
-            Ray3df r{origin, upper_left_corner + u * horizontal + v * vertical};
+            Vector3df pixel_center = pixel00_loc
+                                     + (static_cast<float>(x) * pixel_delta_x)
+                                     + (static_cast<float>(y) * pixel_delta_y);
+            Vector3df ray_direction = pixel_center - camera_center;
+            Ray3df r{camera_center, ray_direction};
+
             Vector3df col = ray_color(r);
             int ir = int(255.999 * col[0]);
             int ig = int(255.999 * col[1]);
