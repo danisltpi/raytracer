@@ -1,5 +1,6 @@
 #include "geometry/geometry.h"
 #include "sdltemplate.h"
+#include "vector"
 
 // Die folgenden Kommentare beschreiben Datenstrukturen und Funktionen
 // Die Datenstrukturen und Funktionen die weiter hinten im Text beschrieben sind,
@@ -18,14 +19,21 @@ using Color = Vector3df;
 
 
 // Das "Material" der Objektoberfläche mit ambienten, diffusem und reflektiven Farbanteil.
-class Material {
-
-};
-
 
 // Ein "Objekt", z.B. eine Kugel oder ein Dreieck, und dem zugehörigen Material der Oberfläche.
 // Im Prinzip ein Wrapper-Objekt, das mindestens Material und geometrisches Objekt zusammenfasst.
 // Kugel und Dreieck finden Sie in geometry.h/tcc
+
+struct Object {
+    Sphere3df sphere;
+    Color color;
+    bool is_reflecting;
+};
+
+struct HitContext {
+    Intersection_Context<float, 3u> intersection;
+    Object obj;
+};
 
 
 // verschiedene Materialdefinition, z.B. Mattes Schwarz, Mattes Rot, Reflektierendes Weiss, ...
@@ -53,25 +61,55 @@ class Material {
 // Am besten einen Zeiger auf das Objekt zurückgeben. Wenn dieser nullptr ist, dann gibt es kein sichtbares Objekt.
 
 // Die rekursive raytracing-Methode. Am besten ab einer bestimmten Rekursionstiefe (z.B. als Parameter übergeben) abbrechen.
-Sphere3df sphere1 = Sphere3df{Vector3df{0.0f, 0.0f, -1.0f}, 0.5f};
+Color bg = {0.f, 0.f, 0.f};
+Sphere3df sphere1 = {{-10.f, -8.5f, -19.f}, 3.f};
+Sphere3df left_wall = {{-10021.0f, 0.f, 0.0f}, 10000.0f};
+Sphere3df right_wall = {{10021.0f, 0.f, 0.0f}, 10000.0f};
+Sphere3df ceiling = {{0.0f, 10012.f, 0.0f}, 10000.0f};
+Sphere3df ground = {{0.0f, -10012.f, 0.0f}, 10000.0f};
+Sphere3df back_wall = {{0.f, 0.f, -10030.f}, 10000.0f};
 
-float hit_sphere(const Sphere3df &sphere, const Ray3df &ray) {
-    return sphere.intersects(ray);
-}
 
+Vector3df light_source = Vector3df{5.f, 11.f, -16.f};
 
-Vector3df ray_color(const Ray3df &ray) {
-    float t = hit_sphere(sphere1, ray);
-    if (t > 0.0) {
-        Vector3df normal = (ray.origin + t * ray.direction) - Vector3df{0, 0, -1};
-        normal.normalize();
-        return 0.5f * Color{normal[0] + 1, normal[1] + 1, normal[2] + 1};
+std::vector<Object> objects = {
+        Object{sphere1, Color{0.f, 0.f, 1.f}, false},
+        Object{left_wall, Color{1.f, 0.f, 0.f}, false},
+        Object{right_wall, Color{0.f, 1.f, 0.f}, false},
+        Object{ceiling, Color{0.8f, .8f, .8f}, false},
+        Object{ground, Color{1.f, 1.f, 1.f}, false},
+        Object{back_wall, Color{1.f, 1.f, 1.f}, false},
+};
+
+Color lambertian(const HitContext &hc) {
+    Intersection_Context<float, 3u> context = hc.intersection;
+
+    Vector3df light_direction = light_source - context.intersection;
+    light_direction.normalize();
+    float brightness_factor = context.normal * light_direction;
+    if (brightness_factor < 0) {
+        brightness_factor = 0;
     }
-    Vector3df dir = ray.direction;
-    dir.normalize();
-    t = 0.5f * (dir[1] + 1.0f);
-    return (1.0f - t) * Color{1.0, 1.0, 1.0} + t * Color{0.5, 0.7, 1.0};
-}
+
+    return brightness_factor * hc.obj.color;
+};
+
+HitContext find_nearest_object(const Ray3df &ray) {
+    float min_t = INFINITY;
+    Intersection_Context<float, 3u> intersection;
+    Object visible_object = Object{Sphere3df{Vector3df{0.f, 0.f, 0.f}, 1},
+                                   Color{0.f, 0.f, 0.f},
+                                   false};
+    for (const auto &obj: objects) {
+        bool is_intersecting = obj.sphere.intersects(ray, intersection);
+        if ((is_intersecting && (intersection.t > 0) && (intersection.t < min_t))) {
+            visible_object = obj;
+            min_t = intersection.t;
+        }
+    };
+    HitContext hc = {intersection, visible_object};
+    return hc;
+};
 
 
 int main() {
@@ -90,6 +128,7 @@ int main() {
     float viewport_width = viewport_height *
                            (static_cast<float>(width) / static_cast<float>(height));
     auto camera_center = Vector3df{0.0, 0.0, 0.0};
+
     // Calculate vectors across horizontal and vertical viewport
     Vector3df viewport_x = Vector3df{viewport_width, 0.0, 0.0};
     Vector3df viewport_y = Vector3df{0.0, -viewport_height, 0.0};
@@ -103,10 +142,6 @@ int main() {
     // center of the upper left pixel
     Vector3df pixel00_loc = viewport_upper_left + 0.5f * (pixel_delta_x + pixel_delta_y);
 
-    Vector3df upper_left_corner{2.0, -1.0, -1.0};
-    Vector3df horizontal{4.0, 0.0, 0.0};
-    Vector3df vertical{0.0, 2.0, 0.0};
-    Vector3df origin{0.0, 0.0, 0.0};
     sdltemplate::sdl("Ray Tracer", width, height);
     sdltemplate::loop();
     for (int y = 0; y < height; y++) {
@@ -116,11 +151,12 @@ int main() {
                                      + (static_cast<float>(y) * pixel_delta_y);
             Vector3df ray_direction = pixel_center - camera_center;
             Ray3df r{camera_center, ray_direction};
-
-            Vector3df col = ray_color(r);
-            int ir = int(255.999 * col[0]);
-            int ig = int(255.999 * col[1]);
-            int ib = int(255.999 * col[2]);
+            HitContext hc = find_nearest_object(r);
+            Color color = lambertian(hc);
+            int ir = static_cast<int>(255 * color[0]);
+            int ig = static_cast<int>(255 * color[1]);
+            int ib = static_cast<int>(255 * color[2]);
+            //std::cout << ir << ' ' << ig << ' ' << ib << " \n";
             sdltemplate::setDrawColor(sdltemplate::createColor(ir, ig, ib, 255));
             sdltemplate::drawPoint(x, y);
         }
