@@ -28,9 +28,10 @@ using Color = Vector3df;
 struct Object {
     Sphere3df sphere;
     Color color;
-    bool is_reflecting;
+    bool is_reflective;
 };
 
+using Scene = std::vector<Object>;
 
 // verschiedene Materialdefinition, z.B. Mattes Schwarz, Mattes Rot, Reflektierendes Weiss, ...
 // im wesentlichen Variablen, die mit Konstruktoraufrufen initialisiert werden.
@@ -68,10 +69,10 @@ Sphere3df sphere1 = {{0.f, -8.f, -17.f}, 3.f};
 Sphere3df sphere2 = {{10.f, -8.f, -14.f}, 3.f};
 Sphere3df sphere3 = {{0.f, -8.f, -30.f}, 3.f};
 
-std::vector<Object> cornell_box = {
-        {sphere1,    Color{0.f, 1.f, 1.f},  false},
+Scene cornell_box = {
+        {sphere1,    Color{0.f, 1.f, 1.f},  true},
         {sphere2,    Color{0.f, .5f, 1.f},  false},
-        {sphere3,    Color{1.f, 0.5f, 1.f}, false},
+        {sphere3,    Color{1.f, 0.5f, 1.f}, true},
         {left_wall,  Color{1.f, 0.f, 0.f},  false},
         {right_wall, Color{0.f, 1.f, 0.f},  false},
         {ceiling,    Color{1.f, 1.f, 1.f},  false},
@@ -81,9 +82,7 @@ std::vector<Object> cornell_box = {
 
 Vector3df light_source = {5.f, 7.f, -16.f};
 
-
-Color lambertian(Ray3df ray, Vector3df light, std::vector<Object> scene) {
-    // find nearest object
+Object find_nearest_object(Ray3df &ray, Scene &scene) {
     Object nearest_obj = scene[0];
     float min_t = INFINITY;
     for (Object obj: scene) {
@@ -93,17 +92,28 @@ Color lambertian(Ray3df ray, Vector3df light, std::vector<Object> scene) {
             nearest_obj = obj;
         }
     }
+    return nearest_obj;
+};
 
+Intersection_Context<float, 3u> get_clean_intersection_context() {
     Intersection_Context<float, 3u> intersection_context;
     intersection_context.intersection = {0.f, 0.f, 0.f};
     intersection_context.normal = {0.f, 0.f, 0.f};
     intersection_context.t = 0.f;
     intersection_context.u = 0.f;
     intersection_context.v = 0.f;
-    nearest_obj.sphere.intersects(ray, intersection_context);
+    return intersection_context;
+};
 
+
+Color lambertian(Ray3df &ray, Vector3df &light, Scene &scene) {
+    // find nearest object
+    Object nearest_obj = find_nearest_object(ray, scene);
+
+    Intersection_Context<float, 3u> intersection_context = get_clean_intersection_context();
+    nearest_obj.sphere.intersects(ray, intersection_context);
     Vector3df normal = intersection_context.normal;
-    Vector3df intersection_point = intersection_context.intersection + (0.001f * normal);
+    Vector3df intersection_point = intersection_context.intersection + (0.015f * normal);
     Vector3df light_direction = light - intersection_point;
 
     // ray hits object at a point
@@ -126,13 +136,34 @@ Color lambertian(Ray3df ray, Vector3df light, std::vector<Object> scene) {
     return nearest_obj.color * cos_theta;
 }
 
+// if hit a diffuse material stop
+// calculate reflective ray from parameter ray
+Color trace(Ray3df &ray, Scene &scene, int depth) {
+    Object nearest_obj = find_nearest_object(ray, scene);
+    if (!nearest_obj.is_reflective || depth == 0) {
+        return lambertian(ray, light_source, scene);
+    }
+
+    Intersection_Context<float, 3u> context = get_clean_intersection_context();
+    nearest_obj.sphere.intersects(ray, context);
+
+    Vector3df n = context.normal;
+    n.normalize();
+
+    Vector3df v = ray.direction;
+    Vector3df reflective_dir = v - 2 * (v * n) * n;
+    Vector3df intersection_point = context.intersection + (0.015f * n);
+    Ray3df reflective{intersection_point, reflective_dir};
+    return trace(reflective, scene, depth - 1);
+}
+
 int main() {
     // Ein "Bildschirm", der das Setzen eines Pixels kapselt
     // Der Bildschirm hat eine Auflösung (Breite x Höhe)
     // Kann zur Ausgabe einer PPM-Datei verwendet werden oder
     // mit SDL2 implementiert werden.
     float aspect_ratio = 16.0f / 9.0f;
-    int width = 1300;
+    int width = 1400;
     int height = static_cast<int>(static_cast<float>(width) / aspect_ratio);
     height = (height < 1) ? 1 : height;
 
@@ -166,7 +197,7 @@ int main() {
                                      + (static_cast<float>(y) * pixel_delta_y);
             Vector3df ray_direction = pixel_center - camera_center;
             Ray3df r{camera_center, ray_direction};
-            Color color = lambertian(r, light_source, cornell_box);
+            Color color = trace(r, cornell_box, 3);
             int ir = static_cast<int>(255 * color[0]);
             int ig = static_cast<int>(255 * color[1]);
             int ib = static_cast<int>(255 * color[2]);
