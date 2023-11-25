@@ -68,11 +68,15 @@ Sphere3df back_wall = {{0.f, 0.f, -10030.f}, 10000.0f};
 Sphere3df sphere1 = {{0.f, -8.f, -17.f}, 3.f};
 Sphere3df sphere2 = {{10.f, -8.f, -14.f}, 3.f};
 Sphere3df sphere3 = {{0.f, -8.f, -30.f}, 3.f};
+Sphere3df sphere4 = {{-10.f, 5.f, -5.f}, 5.f};
+Sphere3df sphere5 = {{-7.f, -6.f, -17.f}, 2.f};
 
 Scene cornell_box = {
         {sphere1,    Color{0.f, 1.f, 1.f},  true},
         {sphere2,    Color{0.f, .5f, 1.f},  false},
-        {sphere3,    Color{1.f, 0.5f, 1.f}, true},
+        {sphere3,    Color{1.f, 0.5f, 1.f}, false},
+        {sphere4,    Color{1.f, 0.5f, 1.f}, true},
+        {sphere5,    Color{1.f, 0.4f, .3f}, false},
         {left_wall,  Color{1.f, 0.f, 0.f},  false},
         {right_wall, Color{0.f, 1.f, 0.f},  false},
         {ceiling,    Color{1.f, 1.f, 1.f},  false},
@@ -106,10 +110,7 @@ Intersection_Context<float, 3u> get_clean_intersection_context() {
 };
 
 
-Color lambertian(Ray3df &ray, Vector3df &light, Scene &scene) {
-    // find nearest object
-    Object nearest_obj = find_nearest_object(ray, scene);
-
+Color lambertian(Ray3df &ray, Vector3df &light, Scene &scene, Object &nearest_obj) {
     Intersection_Context<float, 3u> intersection_context = get_clean_intersection_context();
     nearest_obj.sphere.intersects(ray, intersection_context);
     Vector3df normal = intersection_context.normal;
@@ -121,11 +122,11 @@ Color lambertian(Ray3df &ray, Vector3df &light, Scene &scene) {
     // light is blocked when there is an object between the intersection point and the light source
     // if the distance of the intersection ray is greater than point and light source the light is not blocked
     float distance_to_light = light_direction.length();
-    Ray3df between_intersection_and_light = {intersection_point, light_direction};
+    Ray3df from_intersection_to_light = {intersection_point, light_direction};
     for (Object obj: scene) {
-        between_intersection_and_light.direction.normalize();
+        from_intersection_to_light.direction.normalize();
         // t is now the distance of the ray
-        float t = obj.sphere.intersects(between_intersection_and_light);
+        float t = obj.sphere.intersects(from_intersection_to_light);
         if (t > 0 && t <= distance_to_light) return {0.f, 0.f, 0.f};
     }
 
@@ -136,12 +137,10 @@ Color lambertian(Ray3df &ray, Vector3df &light, Scene &scene) {
     return nearest_obj.color * cos_theta;
 }
 
-// if hit a diffuse material stop
-// calculate reflective ray from parameter ray
-Color trace(Ray3df &ray, Scene &scene, int depth) {
+Color trace(Ray3df &ray, Scene &scene, int max_depth) {
     Object nearest_obj = find_nearest_object(ray, scene);
-    if (!nearest_obj.is_reflective || depth == 0) {
-        return lambertian(ray, light_source, scene);
+    if (!nearest_obj.is_reflective || max_depth == 0) {
+        return lambertian(ray, light_source, scene, nearest_obj);
     }
 
     Intersection_Context<float, 3u> context = get_clean_intersection_context();
@@ -154,7 +153,7 @@ Color trace(Ray3df &ray, Scene &scene, int depth) {
     Vector3df reflective_dir = v - 2 * (v * n) * n;
     Vector3df intersection_point = context.intersection + (0.015f * n);
     Ray3df reflective{intersection_point, reflective_dir};
-    return trace(reflective, scene, depth - 1);
+    return trace(reflective, scene, max_depth - 1);
 }
 
 int main() {
