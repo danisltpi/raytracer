@@ -73,7 +73,7 @@ Sphere3df sphere5 = {{-7.f, -6.f, -17.f}, 2.f};
 
 Scene cornell_box = {
         {sphere1,    Color{0.f, 1.f, 1.f},  true},
-        {sphere2,    Color{0.f, .5f, 1.f},  false},
+        {sphere2,    Color{0.f, 15.f, 1.f}, false},
         {sphere3,    Color{1.f, 0.5f, 1.f}, false},
         {sphere4,    Color{1.f, 0.5f, 1.f}, true},
         {sphere5,    Color{1.f, 0.4f, .3f}, false},
@@ -137,6 +137,7 @@ Color lambertian(Ray3df &ray, Vector3df &light, Scene &scene, Object &nearest_ob
     return nearest_obj.color * cos_theta;
 }
 
+
 Color trace(Ray3df &ray, Scene &scene, int max_depth) {
     Object nearest_obj = find_nearest_object(ray, scene);
     if (!nearest_obj.is_reflective || max_depth == 0) {
@@ -148,10 +149,9 @@ Color trace(Ray3df &ray, Scene &scene, int max_depth) {
 
     Vector3df n = context.normal;
     n.normalize();
-
     Vector3df v = ray.direction;
     Vector3df reflective_dir = v - 2 * (v * n) * n;
-    Vector3df intersection_point = context.intersection + (0.015f * n);
+    Vector3df intersection_point = context.intersection + (0.1f * n);
     Ray3df reflective{intersection_point, reflective_dir};
     return trace(reflective, scene, max_depth - 1);
 }
@@ -191,12 +191,23 @@ int main() {
     sdltemplate::loop();
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            Vector3df pixel_center = pixel00_loc
-                                     + (static_cast<float>(x) * pixel_delta_x)
-                                     + (static_cast<float>(y) * pixel_delta_y);
-            Vector3df ray_direction = pixel_center - camera_center;
-            Ray3df r{camera_center, ray_direction};
-            Color color = trace(r, cornell_box, 3);
+
+            // Super sampling
+            Color accumulated_color{0.0f, 0.0f, 0.0f};
+            const int num_samples = 8;
+            for (int s = 0; s < num_samples; s++) {
+                float subpixel_x = static_cast<float>(x) + static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                float subpixel_y = static_cast<float>(y) + static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                Vector3df pixel_center = pixel00_loc
+                                         + (subpixel_x * pixel_delta_x)
+                                         + (subpixel_y * pixel_delta_y);
+                Vector3df ray_direction = pixel_center - camera_center;
+                Ray3df r{camera_center, ray_direction};
+                accumulated_color += trace(r, cornell_box, 3);
+            }
+            Color color{accumulated_color[0] / num_samples,
+                        accumulated_color[1] / num_samples,
+                        accumulated_color[2] / num_samples};
             int ir = static_cast<int>(255 * color[0]);
             int ig = static_cast<int>(255 * color[1]);
             int ib = static_cast<int>(255 * color[2]);
@@ -205,6 +216,7 @@ int main() {
             sdltemplate::drawPoint(x, y);
         }
     }
+    std::cout << "Done!" << '\n';
     while (sdltemplate::running) {
         sdltemplate::loop();
     }
