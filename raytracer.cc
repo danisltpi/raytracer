@@ -1,5 +1,5 @@
 #include "geometry/geometry.h"
-#include "sdltemplate.h"
+#include "sdlutils.h"
 #include <algorithm>
 #include "vector"
 
@@ -72,16 +72,16 @@ Sphere3df sphere4 = {{-10.f, 5.f, -5.f}, 5.f};
 Sphere3df sphere5 = {{-7.f, -6.f, -17.f}, 2.f};
 
 Scene cornell_box = {
-        {sphere1,    Color{0.f, 1.f, 1.f},  true},
-        {sphere2,    Color{1.f, 0.f, 0.f},  false},
-        {sphere3,    Color{1.f, 0.5f, 1.f}, false},
-        {sphere4,    Color{1.f, 0.5f, 1.f}, true},
-        {sphere5,    Color{1.f, 0.4f, .3f}, false},
-        {left_wall,  Color{1.f, 0.f, 0.f},  false},
-        {right_wall, Color{0.f, 1.f, 0.f},  false},
-        {ceiling,    Color{1.f, 1.f, 1.f},  false},
-        {ground,     Color{1.f, 1.f, 1.f},  false},
-        {back_wall,  Color{1.f, 1.f, 1.f},  false},
+        {sphere1,    Color{0.f, 1.f, 1.f},   true},
+        {sphere2,    Color{1.f, 0.f, 0.f},   false},
+        {sphere3,    Color{0.2f, 0.5f, 1.f}, false},
+        {sphere4,    Color{1.f, 0.5f, 1.f},  true},
+        {sphere5,    Color{1.f, 0.4f, .3f},  false},
+        {left_wall,  Color{1.f, 0.f, 0.f},   false},
+        {right_wall, Color{0.f, 1.f, 0.f},   false},
+        {ceiling,    Color{1.f, 1.f, 1.f},   false},
+        {ground,     Color{1.f, 1.f, 1.f},   false},
+        {back_wall,  Color{1.f, 1.f, 1.f},   false},
 };
 
 Vector3df light_source = {5.f, 7.f, -16.f};
@@ -162,7 +162,7 @@ int main() {
     // Kann zur Ausgabe einer PPM-Datei verwendet werden oder
     // mit SDL2 implementiert werden.
     float aspect_ratio = 16.0f / 9.0f;
-    int width = 1080;
+    int width = 800;
     int height = static_cast<int>(static_cast<float>(width) / aspect_ratio);
     height = (height < 1) ? 1 : height;
 
@@ -172,8 +172,7 @@ int main() {
     float viewport_width = viewport_height *
                            (static_cast<float>(width) / static_cast<float>(height));
     auto camera_center = Vector3df{0.0, 0.0, 0.0};
-
-    // Calculate vectors across horizontal and vertical viewport
+// Calculate vectors across horizontal and vertical viewport
     Vector3df viewport_x = Vector3df{viewport_width, 0.0, 0.0};
     Vector3df viewport_y = Vector3df{0.0, -viewport_height, 0.0};
 
@@ -187,10 +186,10 @@ int main() {
     // center of the upper left pixel
     Vector3df pixel00_loc = viewport_upper_left + 0.5f * (pixel_delta_x + pixel_delta_y);
 
-    sdltemplate::sdl("Ray Tracer", width, height);
-    sdltemplate::loop();
-    std::cout << "P3\n" << width << ' ' << height << "\n255\n";
-    const int num_samples = 2;
+    sdlutils::sdl("Ray Tracer", width, height);
+    sdlutils::loop();
+    //std::cout << "P3\n" << width << ' ' << height << "\n255\n";
+    const int num_samples = 4;
     for (int y = 0; y < height; y++) {
         std::clog << "\rScanlines remaining: " << (height - y) << ' ' << std::flush;
         for (int x = 0; x < width; x++) {
@@ -215,14 +214,14 @@ int main() {
             int ir = static_cast<int>(255 * color[0]);
             int ig = static_cast<int>(255 * color[1]);
             int ib = static_cast<int>(255 * color[2]);
-            std::cout << ir << ' ' << ig << ' ' << ib << '\n';
-            sdltemplate::setDrawColor(sdltemplate::createColor(ir, ig, ib, 255));
-            sdltemplate::drawPoint(x, y);
+            //std::cout << ir << ' ' << ig << ' ' << ib << '\n';
+            sdlutils::setDrawColor(sdlutils::createColor(ir, ig, ib, 255));
+            sdlutils::drawPoint(x, y);
         }
     }
     std::clog << "\rDone.                 \n";
-    while (sdltemplate::running) {
-        sdltemplate::loop();
+    while (sdlutils::running) {
+        sdlutils::loop();
     }
     return 0;
 

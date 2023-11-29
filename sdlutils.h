@@ -2,18 +2,15 @@
 // Created by Danh Thien Luu on 18.11.23.
 //
 
-#ifndef RAYTRACER_SDLTEMPLATE_H
-#define RAYTRACER_SDLTEMPLATE_H
+#ifndef RAYTRACER_SDLUTILS_H
+#define RAYTRACER_SDLUTILS_H
 
 #include <SDL2/SDL.h>
 #include <iostream>
 
-namespace sdltemplate {
+namespace sdlutils {
 
-    SDL_Color bkg;
-    SDL_Color blue = {0, 0, 255, 255};
-
-    const char *title = "SDL2 Template";
+    const char *title = "SDL2";
     int width = 500, height = 500;
     SDL_Renderer *renderer;
     SDL_Window *window;
@@ -95,7 +92,7 @@ namespace sdltemplate {
     }
 
 
-} // namespace sdltemplate
+} // namespace sdlutils
 
 
-#endif //RAYTRACER_SDLTEMPLATE_H
+#endif //RAYTRACER_SDLUTILS_H
